@@ -6,7 +6,6 @@ This is the **GraphQL backend server** for a personal finance tracking applicati
 
 ## 🚀 Features
 
-- 🔐 **JWT-based authentication**
 - 🧾 **Transactions**: Add, update, delete, and fetch
 - 📅 **Budgets**: Set and manage monthly budgets
 - 🏷️ **Categories**: Organize your spending
@@ -14,8 +13,6 @@ This is the **GraphQL backend server** for a personal finance tracking applicati
   - `Node.js` + `TypeScript`
   - `Express.js`
   - `GraphQL` (Apollo Server)
-  - `Prisma ORM`
-  - `PostgreSQL` (local or Supabase)
-  - `Redis` (optional, for caching)
-
+  - `MongoDB` (local or Atlas)
+  
 ---
