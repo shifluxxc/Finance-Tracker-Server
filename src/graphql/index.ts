@@ -7,12 +7,20 @@ import { startStandaloneServer } from "@apollo/server/standalone";
 import { json } from "body-parser";
 import { transaction } from "./transactions";
 import { budget } from "./budget";
+import cors from "cors";
+const allowedOrigins = ['https://clientfinancetracker.vercel.app'];
+
 
 export const InitGraphqlServer = async () => {
     const app = express(); 
     const PORT = Number(process.env.PORT) || 8000; 
     app.use(json()); 
 
+    app.use(cors({
+        origin: allowedOrigins,
+        credentials: true,
+      }));
+      
     const gqlserver = new ApolloServer({
         typeDefs: `
         ${transaction.typedefs}
