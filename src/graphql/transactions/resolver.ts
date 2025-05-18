@@ -3,13 +3,16 @@ import { Transaction } from '../../models/Transaction';
 
 export const resolvers = {
   Query: {
-    transactions: async () => {
-      const transactions = await Transaction.find().populate('category');
+    transactions: async (_: any, __: any, context: any) => {
+      if (!context.user) throw new Error('Not authenticated');
+      const transactions = await Transaction.find({ user: context.user._id }).populate('category');
       return transactions.filter(transaction => transaction.category);
     },
 
-    monthWiseExpenses: async () => {
+    monthWiseExpenses: async (_: any, __: any, context: any) => {
+      if (!context.user) throw new Error('Not authenticated');
       const results = await Transaction.aggregate([
+        { $match: { user: new mongoose.Types.ObjectId(context.user._id) } },
         {
           $group: {
             _id: {
@@ -44,13 +47,18 @@ export const resolvers = {
       return results;
     },
 
-    categoryExpensePercentage: async () => {
+    categoryExpensePercentage: async (_: any, __: any, context: any) => {
+      if (!context.user) throw new Error('Not authenticated');
+      const userId = new mongoose.Types.ObjectId(context.user._id);
+
       const totalAmountAgg = await Transaction.aggregate([
+        { $match: { user: userId } },
         { $group: { _id: null, total: { $sum: { $abs: '$amount' } } } },
       ]);
       const totalAmount = totalAmountAgg[0]?.total || 0;
 
       const categoryAgg = await Transaction.aggregate([
+        { $match: { user: userId } },
         {
           $group: {
             _id: '$category',
@@ -65,9 +73,7 @@ export const resolvers = {
             as: 'categoryInfo',
           },
         },
-        {
-          $unwind: '$categoryInfo',
-        },
+        { $unwind: '$categoryInfo' },
         {
           $project: {
             category: '$categoryInfo.name',
@@ -88,29 +94,34 @@ export const resolvers = {
     },
   },
 
-  Mutation: {
+ // ...existing code...
+Mutation: {
     addTransaction: async (
       _: any,
       {
         amount,
         description,
         categoryId,
+        year,
+        month,
       }: {
         amount: number;
         description: string;
         categoryId: string;
-      }
+        year: number;
+        month: number;
+      },
+      context: any
     ) => {
-      const now = new Date();
-      const currentMonth = now.getMonth() + 1;
-      const currentYear = now.getFullYear();
+      if (!context.user) throw new Error('Not authenticated');
 
       const transaction = new Transaction({
         amount,
         description,
-        month: currentMonth,
-        year: currentYear,
+        month,
+        year,
         category: categoryId,
+        user: context.user._id,
       });
 
       await transaction.save();
@@ -124,24 +135,26 @@ export const resolvers = {
         amount,
         description,
         categoryId,
+        year,
+        month,
       }: {
         id: string;
         amount?: number;
         description?: string;
         categoryId?: string;
-      }
+        year?: number;
+        month?: number;
+      },
+      context: any
     ) => {
-      const transaction = await Transaction.findById(id);
+      if (!context.user) throw new Error('Not authenticated');
+      const transaction = await Transaction.findOne({ _id: id, user: context.user._id });
       if (!transaction) throw new Error('Transaction not found');
-
-      const now = new Date();
-      const currentMonth = now.getMonth() + 1;
-      const currentYear = now.getFullYear();
 
       transaction.amount = amount ?? transaction.amount;
       transaction.description = description ?? transaction.description;
-      transaction.month = transaction.month ?? currentMonth;
-      transaction.year = transaction.year ?? currentYear;
+      transaction.month = month ?? transaction.month;
+      transaction.year = year ?? transaction.year;
       if (categoryId) {
         try {
           transaction.category = new mongoose.Types.ObjectId(categoryId);
@@ -153,19 +166,7 @@ export const resolvers = {
       await transaction.save();
       return transaction.populate('category');
     },
-
-    deleteTransaction: async (_: any, { id }: { id: string }) => {
-      const deleted = await Transaction.findByIdAndDelete(id);
-      if (!deleted) throw new Error('Transaction not found');
-      return 'Transaction deleted successfully';
-    },
-  },
-
-  Transaction: {
-    id: (parent: any) => parent._id.toString(),
-  },
-
-  Category: {
-    id: (parent: any) => parent._id.toString(),
-  },
+    // ...existing code...
+},
+// ...existing code...
 };
